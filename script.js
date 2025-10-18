@@ -5,6 +5,9 @@ const sections = document.querySelectorAll('main section');
 const contactForm = document.getElementById('contact-form');
 const formStatus = document.getElementById('form-status');
 const yearSpan = document.getElementById('year');
+const revealElements = document.querySelectorAll('[data-reveal]');
+
+body.classList.add('js');
 
 navLinks[0]?.classList.add('active');
 
@@ -18,8 +21,63 @@ themeToggle.addEventListener('click', () => {
     themeToggle.setAttribute('aria-pressed', String(isDark));
 });
 
+// Animate in feature blocks as they enter the viewport unless motion is reduced.
+const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+let revealObserver = null;
+
+const activateReveal = () => {
+    if (revealObserver) {
+        revealObserver.disconnect();
+        revealObserver = null;
+    }
+
+    if (motionQuery.matches) {
+        revealElements.forEach(element => element.classList.add('is-visible'));
+        return;
+    }
+
+    revealObserver = new IntersectionObserver(
+        (entries, observerInstance) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observerInstance.unobserve(entry.target);
+                }
+            });
+        },
+        {
+            rootMargin: '0px 0px -10% 0px',
+            threshold: 0.25
+        }
+    );
+
+    revealElements.forEach(element => {
+        if (!element.classList.contains('is-visible')) {
+            revealObserver.observe(element);
+        }
+    });
+};
+
+activateReveal();
+
+const handleMotionPreference = event => {
+    if (event.matches) {
+        revealObserver?.disconnect();
+        revealObserver = null;
+        revealElements.forEach(element => element.classList.add('is-visible'));
+    } else {
+        activateReveal();
+    }
+};
+
+if (typeof motionQuery.addEventListener === 'function') {
+    motionQuery.addEventListener('change', handleMotionPreference);
+} else if (typeof motionQuery.addListener === 'function') {
+    motionQuery.addListener(handleMotionPreference);
+}
+
 // Highlight the navigation link for the section currently in view.
-const observer = new IntersectionObserver(
+const sectionObserver = new IntersectionObserver(
     entries => {
         entries.forEach(entry => {
             const id = entry.target.getAttribute('id');
@@ -40,7 +98,7 @@ const observer = new IntersectionObserver(
     }
 );
 
-sections.forEach(section => observer.observe(section));
+sections.forEach(section => sectionObserver.observe(section));
 
 // Provide immediate feedback when the contact form is submitted.
 contactForm.addEventListener('submit', event => {
